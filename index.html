@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextGenNav AI Assistant</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 500px;
+            height: 90vh;
+            background: var(--surface);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #ef4444;
+            /* Start red (loading) */
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.ready {
+            background-color: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+
+        .header h1 {
+            font-size: 1.1rem;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Chat Area */
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background: var(--surface-hover);
+            color: var(--text);
+            border-bottom-left-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .source-tag {
+            display: block;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        input::placeholder {
+            color: #475569;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            gap: 4px;
+            padding: 8px 12px;
+            background: var(--surface-hover);
+            border-radius: 12px;
+            align-self: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .loader span {
+            width: 6px;
+            height: 6px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loader span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loader span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--surface-hover);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="chat-container">
+        <div class="header">
+            <div class="status-dot" id="statusDot"></div>
+            <div>
+                <h1>NextGenNav AI</h1>
+                <div class="subtitle" id="statusText">Initializing Brain... (this may take a moment)</div>
+            </div>
+        </div>
+
+        <div class="messages" id="messages">
+            <div class="message bot">
+                Hello! I'm your AI guide for the SDG Design Challenge.
+                <br><br>
+                I'm 100% local (privacy-first) and can answer questions about the schedule, submission rules, prizes,
+                and more. What would you like to know?
+            </div>
+        </div>
+        <div class="loader" id="loader">
+            <span></span><span></span><span></span>
+        </div>
+
+        <form class="input-area" id="chatForm">
+            <input type="text" id="userInput" placeholder="Ask about submission, prizes..." autocomplete="off" disabled>
+            <button type="submit" id="sendBtn" disabled>Send</button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.14.0';
+
+        // Disable caching to ensure fresh loads during dev (optional)
+        env.useBrowserCache = true;
+        env.allowLocalModels = false; // Force fetch from CDN
+
+        // Embedded Knowledge Base to avoid CORS errors on local file:// execution
+        const knowledge = [
+            // about.md
+            {
+                source: "About",
+                text: "The SDG Design Challenge is a Global Innovation Initiative hosted by NextGenNav, Designed to accelerate real-world solutions for the United Nations Sustainable Development Goals (SDGs) through the responsible use of Artificial Intelligence."
+            },
+            {
+                source: "About",
+                text: "Launched on UNESCO’s Day of Education and Ongoing in Collaboration with OpenComAI Foundation and United Nations, this challenge brings together 300+ Selected participants from around the World covering Innovators, Designers, Technologists, and Sustainability Leaders."
+            },
+            {
+                source: "About - Purpose",
+                text: "Purpose of the Challenge: Participants collaborate to Co-create with AI to address critical sustainability challenges, Prototype SDG-aligned solutions using advanced AI tools, Transform concepts into action, and Engage with global experts."
+            },
+            {
+                source: "About - Goal",
+                text: "The SDG Design Challenge is more than a competition—it is a commitment to action, supporting pathways toward $50,000 USD in funding opportunities and access to accelerator programs."
+            },
+
+            // brochure.md
+            {
+                source: "Brochure - Overview",
+                text: "Review the SDG Design Challenge Brochure. What is This? A global online innovation challenge where youth create real, working solutions aligned with the United Nations Sustainable Development Goals (SDGs)."
+            },
+            {
+                source: "Brochure - Mission",
+                text: "Our mission is simple: Take an idea and turn it into something that works. Coding is optional. AI, no-code, and existing frameworks are encouraged."
+            },
+            {
+                source: "Brochure - Eligibility",
+                text: "Who can join? Youth and students aged 13-25. From any country. Solo or teams (up to 6). Free and Open to All."
+            },
+            {
+                source: "Brochure - Date",
+                text: "When is it? Jan 24-30, 2026. Virtual Global Event."
+            },
+            {
+                source: "Brochure - Process",
+                text: "What do participants actually do? 1. Choose a problem connected to SDGs. 2. Design a solution idea. 3. Build a working digital prototype. 4. Submit project online. 5. Present a 3-minute demo video."
+            },
+            {
+                source: "Brochure - Solution Types",
+                text: "Types of solutions you can build: Health & Wellbeing (Symptom checker, Telemedicine), Education (Study platform), Climate (Carbon calculator), Gender (Safety app), etc. You can use No-code AI tools, Web dev, Mobile, Dashboards."
+            },
+            {
+                source: "Brochure - Awards",
+                text: "What participants receive: Certificates, Learning, Visibility. Top-performing teams receive: Paid internships, Mentorship, Media features, Share of $50,000+ pool of opportunities, Accelerator access."
+            },
+
+            // dreams.md
+            {
+                source: "Dreams - Themes",
+                text: "The 6 main themes (Dreams) for the challenge are: 1. Clean Water and Sanitation Access (SDG 6). 2. Quality and Accessible Education (SDG 4). 3. Climate Action (SDG 13). 4. Gender Equality (SDG 5). 5. Universal Healthcare (SDG 3). 6. Decent Work (SDG 8)."
+            },
+            {
+                source: "Dreams - Water",
+                text: "Dream 1: Clean Water and Sanitation Access (SDG 6). Universal access to clean water, protection of water sources, solutions to water scarcity."
+            },
+            {
+                source: "Dreams - Education",
+                text: "Dream 2: Quality and Accessible Education (SDG 4). Inclusive education, practical skills, focus on girls/marginalized groups."
+            },
+            {
+                source: "Dreams - Climate",
+                text: "Dream 3: Climate Action (SDG 13). Emissions reduction, clean air, biodiversity protection, climate resilience."
+            },
+            {
+                source: "Dreams - Gender",
+                text: "Dream 4: Gender Equality (SDG 5). Empowerment of women, ending discrimination/violence, economic independence."
+            },
+            {
+                source: "Dreams - Health",
+                text: "Dream 5: Universal Healthcare (SDG 3). Accessible healthcare, mental health support, preventive care."
+            },
+            {
+                source: "Dreams - Work",
+                text: "Dream 6: Decent Work (SDG 8). Job creation, fair wages, youth employment, sustainable livelihoods."
+            },
+
+            // judging.md
+            {
+                source: "Judging - Criteria",
+                text: "Judging Criteria: Innovativeness (20%), Realizability (20%), Comprehensibility (15%), Diversity (10%), SDG Impact & Alignment (20%), Scalability (15%)."
+            },
+            {
+                source: "Judging - Innovativeness",
+                text: "Innovativeness (20%): Novelty of the idea, differentiation from existing solutions."
+            },
+            {
+                source: "Judging - Realizability",
+                text: "Realizability (20%): Realistic timeline (MVP in 3 months), access to resources, risk mitigation, technical feasibility."
+            },
+            {
+                source: "Judging - Comprehensibility",
+                text: "Comprehensibility (15%): Clear value proposition, easy to understand, well-detailed implementation."
+            },
+            {
+                source: "Judging - Diversity",
+                text: "Diversity (10%): Team diversity (if applicable) in gender/background/skills, passion for the problem."
+            },
+            {
+                source: "Judging - Impact",
+                text: "SDG Impact (20%): Alignment with chosen SDG, depth of impact on target population."
+            },
+            {
+                source: "Judging - Scalability",
+                text: "Scalability (15%): Potential for wide reach, ability to scale across regions."
+            },
+
+            // logistics.md
+            {
+                source: "Logistics - Event Structure",
+                text: "Event Structure: Asynchronous participation. Teams up to 10 or solo. 6 days of solution creation starting Jan 24th."
+            },
+            {
+                source: "Logistics - Ceremonies",
+                text: "Opening Ceremony: Jan 24th, 3PM UTC. Closing Ceremony: Jan 31st, 3PM UTC."
+            },
+            {
+                source: "Logistics - Submission Process",
+                text: "Submission: Submit via Tally form in Discord #announcements (NOT DevPost). Submit a video (max 3 mins) and a 1-page document (<300 words)."
+            },
+            {
+                source: "Logistics - Video",
+                text: "Submission Video: Max 3 minutes. Can be presentation, demo, etc. Content after 3 mins is ignored."
+            },
+            {
+                source: "Logistics - Document",
+                text: "Submission Document: Max 300 words. Should include Problem statement, Solution overview, Impact, Feasibility, Ethics, Team roles, Future roadmap."
+            },
+            {
+                source: "Logistics - Late Signups",
+                text: "Late Sign Ups: Can only join if joining an existing team. Form: https://tally.so/r/RGD8dK. Not eligible for Lovable credits."
+            },
+
+            // lovable.md
+            {
+                source: "Lovable Credits",
+                text: "100 FREE Lovable credits for all participants. Code: SDGEVENTDESIGN. Go to lovable.dev -> Settings -> Plans -> Pro Plan 1 (Monthly) -> Enter code."
+            },
+
+            // prizes.md
+            {
+                source: "Prizes",
+                text: "Prizes: Top 10 projects receive $5,000 USD to continue prototypes (Zenvic International). Top prototypes get entry to Build for Earth Acceleration program (6-month mentorship)."
+            },
+
+            // signup.md
+            {
+                source: "Sign Up - ID",
+                text: "Participant ID: Every participant has a unique ID found in the Google Sheet (Column M). Needed for submission."
+            },
+            {
+                source: "Sign Up - Sheet",
+                text: "Find your ID here: https://docs.google.com/spreadsheets/d/1Fgkba1_8rWX6OwuJH6Y6fuCruIDV1Zp7TQcj9wlWlcc/edit?gid=0#gid=0"
+            },
+
+            // submission.md
+            {
+                source: "Submission Form",
+                text: "Submission Form: https://tally.so/r/eqabQe. Only one member per team needs to submit."
+            },
+            {
+                source: "Submission - Tracks",
+                text: "Submission Tracks: Select one of the 6 SDG Dream Tracks (A-F) or the Open Track (G). No double winners."
+            },
+            {
+                source: "Submission - Deliverables",
+                text: "Required Deliverables: 1. Video Link (Drive/YouTube, max 3 min). 2. Document (PDF/Doc, max 300 words)."
+            }
+        ];
+
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const messagesDiv = document.getElementById('messages');
+        const loader = document.getElementById('loader');
+        const chatForm = document.getElementById('chatForm');
+
+        let extractor;
+        let embeddings = [];
+        // Model: "Xenova/all-MiniLM-L6-v2" is a great balance of size (22MB quant) and performance
+        const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2';
+
+        async function addMessage(text, sender, source = null) {
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            div.innerHTML = text; // Allow HTML for line breaks
+
+            if (source) {
+                const tag = document.createElement('span');
+                tag.className = 'source-tag';
+                tag.innerText = `Source: ${source}`;
+                div.appendChild(tag);
+            }
+
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Cosine similarity function
+        function cosineSimilarity(a, b) {
+            let dotProduct = 0;
+            let magnitudeA = 0;
+            let magnitudeB = 0;
+            for (let i = 0; i < a.length; i++) {
+                dotProduct += a[i] * b[i];
+                magnitudeA += a[i] * a[i];
+                magnitudeB += b[i] * b[i];
+            }
+            return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
+        }
+
+        async function init() {
+            try {
+                // 1. Load Pipeline
+                extractor = await pipeline('feature-extraction', MODEL_NAME);
+
+                statusText.innerText = `Indexing ${knowledge.length} knowledge chunks...`;
+
+                // 2. Embed Knowledge Base
+                // We do this sequentially to not freeze UI too much, but for small KB parallel is fine
+                for (const item of knowledge) {
+                    const output = await extractor(item.text, { pooling: 'mean', normalize: true });
+                    embeddings.push({
+                        vector: output.data,
+                        text: item.text,
+                        source: item.source
+                    });
+                }
+
+                // Ready!
+                statusDot.classList.add('ready');
+                statusText.innerText = "Online & Ready";
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+
+            } catch (error) {
+                console.error(error);
+                statusText.innerText = "Error loading AI model. Check console.";
+                statusDot.style.backgroundColor = "red";
+            }
+        }
+
+        async function handleQuery(e) {
+            e.preventDefault();
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // User Message
+            addMessage(text, 'user');
+            userInput.value = '';
+            loader.style.display = 'flex';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            try {
+                // Embed query
+                const output = await extractor(text, { pooling: 'mean', normalize: true });
+                const queryVector = output.data;
+
+                // Score documents
+                let bestScore = -1;
+                let bestTimeout = null;
+
+                const scored = embeddings.map(doc => {
+                    return {
+                        ...doc,
+                        score: cosineSimilarity(queryVector, doc.vector)
+                    };
+                }).sort((a, b) => b.score - a.score);
+
+                const topMatch = scored[0];
+                const THRESHOLD = 0.25; // Experimental threshold
+
+                // Artificial delay for "processing" feel (and to let UI breathe)
+                setTimeout(() => {
+                    loader.style.display = 'none';
+
+                    if (topMatch.score < THRESHOLD) {
+                        addMessage("I'm not sure about that based on the official handbook. Please contact the organizers in the Discord #questions channel for clarification.", 'bot');
+                    } else {
+                        addMessage(topMatch.text, 'bot', topMatch.source);
+                    }
+                }, 500);
+
+            } catch (error) {
+                loader.style.display = 'none';
+                addMessage("Sorry, I encountered an internal error processing that.", 'bot');
+                console.error(error);
+            }
+        }
+
+        chatForm.addEventListener('submit', handleQuery);
+
+        // Start initialization
+        init();
+
+    </script>
+</body>
+
+</html>
